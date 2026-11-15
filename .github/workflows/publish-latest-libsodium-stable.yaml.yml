@@ -1,0 +1,123 @@
+name: Publish latest libsodium stable to Launchpad
+
+on:
+  workflow_dispatch:
+    inputs:
+      sodium_version:
+        description: 'Libsodium stable version branch to package (e.g., 1.0.22)'
+        required: true
+        default: '1.0.22'
+  schedule:
+    # Check weekly on Mondays at 04:00 UTC for silent in-place stable updates
+    - cron: '0 4 * * 1'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-26.04
+    env:
+      MINISIGN_PUBKEY: "RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3"
+      LP_REPO: "git+ssh://loltech@git.launchpad.net/~loltech/ubuntu/+source/libsodium/+git/libsodium"
+      DOWNLOAD_ROOT: "https://download.libsodium.org/libsodium/releases"
+      SODIUM_VER: "${{ github.event.inputs.sodium_version || '1.0.22' }}"
+      TARBALL: "libsodium-${{ github.event.inputs.sodium_version || '1.0.22' }}-stable.tar.gz"
+
+    steps:
+      - name: Checkout packaging rules
+        uses: actions/checkout@v4
+        with:
+          path: packaging-repo
+
+      - name: Install minisign and devscripts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y minisign devscripts
+
+      - name: Download and verify ${{ env.TARBALL }}
+        run: |
+          mkdir -p upstream-download
+          cd upstream-download
+          wget -q "${DOWNLOAD_ROOT}/${TARBALL}"
+          wget -q "${DOWNLOAD_ROOT}/${TARBALL}.minisig"
+
+          if ! minisign -VP "$MINISIGN_PUBKEY" -m "$TARBALL"; then
+            echo "ERROR: Minisign signature verification failed for ${TARBALL}!" >&2
+            exit 1
+          fi
+
+          tar -xzf "$TARBALL"
+
+      - name: Configure SSH for Launchpad
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.LAUNCHPAD_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan git.launchpad.net >> ~/.ssh/known_hosts
+
+      - name: Clone existing Launchpad repository
+        run: |
+          git clone "$LP_REPO" lp-repo
+
+      - name: Sync upstream source and preserve changelog history
+        run: |
+          if [ -f lp-repo/debian/changelog ]; then
+            cp lp-repo/debian/changelog /tmp/previous-changelog
+          fi
+
+          rsync -a --delete --exclude='.git' "upstream-download/libsodium-stable/" lp-repo/
+          cp -a packaging-repo/debian lp-repo/debian
+
+          if [ -f /tmp/previous-changelog ]; then
+            cp /tmp/previous-changelog lp-repo/debian/changelog
+          fi
+
+      - name: Check if source or packaging changed
+        id: check_changes
+        working-directory: lp-repo
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes detected compared to current Launchpad master branch."
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepend new dated entry to debian/changelog
+        if: steps.check_changes.outputs.changed == 'true'
+        working-directory: lp-repo
+        env:
+          DEBFULLNAME: "Vlad Pascu"
+          DEBEMAIL: "package.admin@loltech.ro"
+        run: |
+          RELEASE_DATE=$(date -u -r "../upstream-download/${TARBALL}" +%Y%m%d)
+          PKG_VER="${SODIUM_VER}+${RELEASE_DATE}"
+          echo "PKG_VER=$PKG_VER" >> $GITHUB_ENV
+
+          dch --newversion "$PKG_VER" \
+              --distribution resolute \
+              "Package libsodium ${SODIUM_VER} (${RELEASE_DATE} upstream release; rules from ${{ github.repository }}@${{ github.sha }})"
+
+      - name: Commit release snapshot, tag, and push to Launchpad
+        if: steps.check_changes.outputs.changed == 'true'
+        working-directory: lp-repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@://github.com"
+          git add -A
+          git commit -m "Release libsodium ${{ env.PKG_VER }}"
+          git tag -a "${{ env.PKG_VER }}" -m "Verified libsodium ${{ env.PKG_VER }} snapshot"
+          git push origin master --tags
+
+      - name: Sync updated changelog back to GitHub repo
+        if: steps.check_changes.outputs.changed == 'true'
+        working-directory: packaging-repo
+        run: |
+          cp ../lp-repo/debian/changelog debian/changelog
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@://github.com"
+          git add debian/changelog
+          git commit -m "chore: update debian/changelog for libsodium ${{ env.PKG_VER }}"
+          git push
