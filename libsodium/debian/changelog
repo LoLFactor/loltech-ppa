@@ -1,3 +1,10 @@
+libsodium26 (1.0.22+20261112) resolute; urgency=medium
+
+  * Package libsodium 1.0.22 (20261112 upstream release; rules from
+    LoLFactor/loltech-ppa@64064d5f8a529541bbe45cb1d0390de01675ddd7)
+
+ -- Vlad Pascu <package.admin@loltech.ro>  Sun, 15 Nov 2026 17:06:39 +0000
+
 libsodium26 (1.0.22) resolute; urgency=medium
 
   * Initial backport of libsodium 1.0.22 (libsodium26) modified for coexistence alongside the supplied OS version (libsodium23).
