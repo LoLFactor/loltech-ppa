@@ -60,18 +60,10 @@ jobs:
         run: |
           git clone "$LP_REPO" lp-repo
 
-      - name: Sync upstream source and preserve changelog history
+      - name: Combine upstream source and packaging rules
         run: |
-          if [ -f lp-repo/libsodium/debian/changelog ]; then
-            cp lp-repo/libsodium/debian/changelog /tmp/previous-changelog
-          fi
-
           rsync -a --delete --exclude='.git' "upstream-download/libsodium-stable/" lp-repo/
-          cp -a packaging-repo/debian lp-repo/debian
-
-          if [ -f /tmp/previous-changelog ]; then
-            cp /tmp/previous-changelog lp-repo/libsodium/debian/changelog
-          fi
+          cp -a "packaging-repo/libsodium/debian" lp-repo/debian
 
       - name: Check if source or packaging changed
         id: check_changes
@@ -115,7 +107,7 @@ jobs:
         if: steps.check_changes.outputs.changed == 'true'
         working-directory: packaging-repo
         run: |
-          cp ../lp-repo/libsodium/debian/changelog libsodium/debian/changelog
+          cp ../lp-repo/debian/changelog libsodium/debian/changelog
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@://github.com"
           git add debian/changelog
