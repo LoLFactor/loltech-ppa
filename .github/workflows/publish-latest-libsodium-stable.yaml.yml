@@ -9,7 +9,7 @@ on:
         default: '1.0.22'
   schedule:
     # Check weekly on Mondays at 04:00 UTC for silent in-place stable updates
-    - cron: '0 4 * * 1'
+    - cron: '30 1 * * *'
 
 permissions:
   contents: write
