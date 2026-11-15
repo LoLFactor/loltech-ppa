@@ -110,6 +110,6 @@ jobs:
           cp ../lp-repo/debian/changelog libsodium/debian/changelog
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@://github.com"
-          git add debian/changelog
+          git add libsodium/debian/changelog
           git commit -m "chore: update debian/changelog for libsodium ${{ env.PKG_VER }}"
           git push
