@@ -1,0 +1,5 @@
+libsodium26 (1.0.22-1) resolute; urgency=medium
+
+  * Initial backport of libsodium 1.0.22 (libsodium26) modified for coexistence alongside the supplied OS version (libsodium23).
+
+ -- Vlad Pascu <package.admin@loltech.ro>  Sat, 14 Nov 2026 20:37:15 +0200

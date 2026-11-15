@@ -1,0 +1,30 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+include /usr/share/dpkg/architecture.mk
+
+%:
+	dh $@ --with autoreconf -Bbuild
+
+override_dh_install:
+	# Relocate headers to /usr/include/libsodium26
+	mkdir -p debian/tmp/usr/include/libsodium26
+	mv debian/tmp/usr/include/sodium.h debian/tmp/usr/include/sodium debian/tmp/usr/include/libsodium26/
+
+	# Relocate dev .so symlink and .a archive to /usr/lib/<arch>/libsodium26
+	mkdir -p debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/libsodium26
+	mv debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/libsodium.so debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/libsodium.a \
+	   debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/libsodium26/
+	ln -sf ../libsodium.so.26 debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/libsodium26/libsodium.so
+
+	# Rename and update libsodium.pc -> libsodium26.pc
+	sed -e 's|^includedir=.*|includedir=$${prefix}/include/libsodium26|' \
+	    -e 's|^libdir=.*|libdir=$${exec_prefix}/lib/$(DEB_HOST_MULTIARCH)/libsodium26|' \
+	    debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig/libsodium.pc \
+	    > debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig/libsodium26.pc
+	rm -f debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig/libsodium.pc
+
+	dh_install

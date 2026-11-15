@@ -1,0 +1,4 @@
+usr/include/libsodium26
+usr/lib/*/libsodium26/libsodium*.so
+usr/lib/*/libsodium26/*.a
+usr/lib/*/pkgconfig/libsodium26.pc
