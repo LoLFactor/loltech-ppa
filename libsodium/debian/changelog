@@ -1,3 +1,10 @@
+libsodium26 (1.0.22+20261117) resolute; urgency=medium
+
+  * Package libsodium 1.0.22 (20261117 upstream release; rules from
+    LoLFactor/loltech-ppa@aacebaadc833c5c3e8f2bfb9e45ce4fbfbaf4220)
+
+ -- Vlad Pascu <package.admin@loltech.ro>  Wed, 18 Nov 2026 08:52:44 +0000
+
 libsodium26 (1.0.22+20261116) resolute; urgency=medium
 
   * Package libsodium 1.0.22 (20261116 upstream release; rules from
